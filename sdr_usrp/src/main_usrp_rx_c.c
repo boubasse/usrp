@@ -504,7 +504,7 @@ int main(int argc, char* argv[]){
 	
 	// ========================================================================================================
 	
-	float settling = 0.2;
+	/* float settling = 0.2;
 	float timeout = settling + 0.1; //expected settling time + padding for first recv
 	bool overflow_message = true;
 
@@ -555,7 +555,7 @@ int main(int argc, char* argv[]){
         fprintf(stderr,"%s[SDR RX] Received packet: %zu samples, %.f full secs, %f frac secs\n%s",GREEN,num_rx_samps,difftime(full_secs, (int64_t)0),frac_secs,RESET);
 		
 		num_acc_samps += num_rx_samps;
-	}
+	} */
 
     
     fclose(output_fid);

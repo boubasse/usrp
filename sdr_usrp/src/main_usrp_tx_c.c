@@ -495,11 +495,11 @@ int main(int argc, char* argv[]){
     if(status != UHD_ERROR_NONE){ return -1; }
 	
     // ===========================
-	/*
+	/* 
 	//reset usrp time to prepare for transmit/receive
-	std::cout << boost::format("Setting device timestamp to 0...") << std::endl;
-	uhd_tx_usrp_set_time_now(uhd::time_spec_t(0.0));
-    */
+	// std::cout << boost::format("Setting device timestamp to 0...") << std::endl;
+	// uhd_tx_usrp_set_time_now(uhd::time_spec_t(0.0));
+    
      
 	float timeout = 0.1;
 	 
@@ -528,7 +528,7 @@ int main(int argc, char* argv[]){
         num_acc_samps += num_samps_sent;
 
     }
-    
+     */
 	fclose(input_fid);
 	
 	// Delete
