@@ -113,7 +113,7 @@ int main(int argc, char* argv[]){
     double gain_ratio       = 0.7;
 	double Bandwidth        = 1.4e6;
     
-
+    Bandwidth = 1.4*SampleRate;
 
     int a;
 	bool anyargs = false;
@@ -197,13 +197,6 @@ int main(int argc, char* argv[]){
     
     
     
-                          
-    char *device_args = "type=x300,addr=192.168.10.2,fpga=HG,name=USRP1,serial=30AABE8,product=X310";
-    char *devname = NULL;
-    
-    /*float current_master_clock;*/
-    /*bool dynamic_rate;*/
-    
     /* Find available devices */
     uhd_string_vector_handle devices_str;
     uhd_string_vector_make(&devices_str);
@@ -219,6 +212,10 @@ int main(int argc, char* argv[]){
     }
     
     /* If device type or name not given in args, choose a B200 */
+	char *device_args = "type=x300,addr=192.168.10.2,fpga=HG,name=USRP1,serial=30AABE8,product=X310";
+    char *devname = NULL;
+	/*float current_master_clock;*/
+    /*bool dynamic_rate;*/
     if (device_args[0]=='\0') {
       if (find_string(devices_str, "type=b200") && !strstr(device_args, "recv_frame_size")) {
         // If B200 is available, use it
@@ -319,7 +316,8 @@ int main(int argc, char* argv[]){
     
     if(tx_usrp != NULL){ fprintf(stderr, "[SDR TX] Device is detected with success ....\n"); }
     
-    if (devname) {
+    /* dev name */
+	if (devname) {
       char dev_str[1024];
       uhd_usrp_get_mboard_name(tx_usrp, 0, dev_str, 1024);
       if (strstr(dev_str, "B2") || strstr(dev_str, "B2")) {
@@ -333,11 +331,58 @@ int main(int argc, char* argv[]){
     if (!devname) {
       devname = "uhd_unknown"; 
     }
+	
+	fprintf(stderr, "[SDR TX] usrp name = %s...\n", devname);
+   
+   /* has rssi ? */
+    uhd_string_vector_handle tx_sensors;  
+    uhd_string_vector_make(&tx_sensors);
+    uhd_usrp_get_tx_sensor_names(tx_usrp, 0, &tx_sensors);
+    bool has_rssi = find_string(tx_sensors, "rssi"); 
+    uhd_string_vector_free(&tx_sensors);
+    
+    fprintf(stderr, "[SDR TX] usrp has_rssi = %d...\n", has_rssi);
     
     
     // =================================================================
+	
+	
     
-    /* Set transmitter subdev spec if specified */
+    // Get USRP RF Characteristics
+    uhd_meta_range_handle tx_metric_range = NULL;
+    uhd_meta_range_make(&tx_metric_range);
+	double min_value, max_value;
+	
+	status = uhd_usrp_get_tx_rates(tx_usrp, channel, tx_metric_range);          
+    status = uhd_meta_range_start(tx_metric_range, &min_value);
+    status = uhd_meta_range_stop(tx_metric_range, &max_value);
+    fprintf(stderr, "[SDR TX] usrp Sample Rate range: %2.3f-%2.3f...\n", min_value,max_value);
+	
+	status = uhd_usrp_get_tx_freq_range(tx_usrp, channel, tx_metric_range);           
+    status = uhd_meta_range_start(tx_metric_range, &min_value);
+    status = uhd_meta_range_stop(tx_metric_range, &max_value);
+    fprintf(stderr, "[SDR TX] usrp Center Frequency range: %2.3f-%2.3f...\n", min_value,max_value);
+	
+	status = uhd_usrp_get_tx_bandwidth_range(tx_usrp, channel, tx_metric_range);          
+    status = uhd_meta_range_start(tx_metric_range, &min_value);
+    status = uhd_meta_range_stop(tx_metric_range, &max_value);
+    fprintf(stderr, "[SDR TX] usrp Bandwidth range: %2.3f-%2.3f...\n", min_value,max_value);
+	
+    status = uhd_usrp_get_tx_gain_range(tx_usrp, "", channel, tx_metric_range);          
+    status = uhd_meta_range_start(tx_metric_range, &min_value);
+    status = uhd_meta_range_stop(tx_metric_range, &max_value);
+    fprintf(stderr, "[SDR TX] usrp Gain range: %2.3f-%2.3f...\n", min_value,max_value);
+	
+	//uhd_string_vector_handle antennas_out;
+	//status = uhd_usrp_get_tx_antennas(tx_usrp, channel, &antennas_out);
+	//uhd_string_vector_free(&antennas_out);
+	
+    uhd_meta_range_free(&tx_metric_range);
+	
+	
+	// =================================================================
+    
+    // Set transmitter subdev spec if specified
     if (strlen(tx_subdev_str)) {
       uhd_subdev_spec_handle subdev_spec_handle = {0};
 
@@ -353,29 +398,6 @@ int main(int argc, char* argv[]){
     if (clock_src == EXTERNAL) { uhd_usrp_set_clock_source(tx_usrp, "external", 0); } 
     else if (clock_src == GPSDO) { uhd_usrp_set_clock_source(tx_usrp, "gpsdo", 0); }
     else{ fprintf(stderr,"[SDR TX] clock source is set to default'\n"); }
-    
-   // =================================================================
-   
-   /* has rssi ? */
-    uhd_string_vector_handle tx_sensors;  
-    uhd_string_vector_make(&tx_sensors);
-    uhd_usrp_get_tx_sensor_names(tx_usrp, 0, &tx_sensors);
-    bool has_rssi = find_string(tx_sensors, "rssi"); 
-    uhd_string_vector_free(&tx_sensors);
-    
-    fprintf(stderr, "[SDR TX] usrp has_rssi = %d...\n", has_rssi);
-    
-    // Set starting gain to half maximum in case of using AGC
-    uhd_meta_range_handle tx_gain_range = NULL;
-    uhd_meta_range_make(&tx_gain_range);
-    status = uhd_usrp_get_tx_gain_range(tx_usrp, "", 0, tx_gain_range);
-    
-    double min_gain, max_gain;
-    status = uhd_meta_range_start(tx_gain_range, &min_gain);
-    status = uhd_meta_range_stop(tx_gain_range, &max_gain);
-    fprintf(stderr, "[SDR TX] usrp gain range: %2.3f-%2.3f...\n", min_gain,max_gain);
-    uhd_meta_range_free(&tx_gain_range);
-
   
     // Set Sample Rate
     fprintf(stderr, "[SDR TX] Setting TX Rate: %f...\n", SampleRate);
@@ -403,11 +425,22 @@ int main(int argc, char* argv[]){
     fprintf(stderr, "[SDR TX] Actual TX Gain: %f...\n", gain);
     
     //set the IF filter bandwidth
-	Bandwidth = 1.4*SampleRate;
-    status = uhd_usrp_set_tx_bandwidth(tx_usrp, Bandwidth, channel);
+	fprintf(stderr, "[SDR TX] Setting RX Bandwidth: %f...\n", Bandwidth);
+    status = uhd_usrp_set_tx_bandwidth(tx_usrp, Bandwidth, channel); //EXECUTE_OR_GOTO(free_tx_metadata,
+	status = uhd_usrp_get_tx_bandwidth(tx_usrp, channel, &Bandwidth); // EXECUTE_OR_GOTO(free_tx_metadata,
+	fprintf(stderr, "[SDR TX] Actual RX Bandwidth: %f...\n", Bandwidth);
+
 	
-    //set the antenna
-    /*status = uhd_usrp_set_tx_antenna(tx_usrp, "TX1", channel);*/
+    //set the antenna 
+	/*char* AntLabel = "RX1";
+	fprintf(stderr, "[SDR TX] Setting RX Antenna: %s...\n", AntLabel);
+    status = uhd_usrp_set_tx_antenna(tx_usrp, AntLabel, channel);
+	size_t strbuffer_len = 20;
+	status = uhd_usrp_get_tx_antenna(tx_usrp, channel, AntLabel, strbuffer_len);
+	fprintf(stderr, "[SDR TX] Actual RX Antenna: %s...\n", AntLabel);*/
+	
+	
+	// =================================================================
 
     // Create TX streamer
     uhd_tx_streamer_handle tx_streamer;
@@ -445,6 +478,7 @@ int main(int argc, char* argv[]){
     //double* buff  = calloc(sizeof(double), BUFF_SIZE * 2);
     //float* buff  = calloc(sizeof(float), BUFF_SIZE * 2);
     short* buff  = calloc(sizeof(short), BUFF_SIZE * 2);
+	//uint8_t* buff  = calloc(sizeof(uint8_t), BUFF_SIZE * 2);
     
     
     
