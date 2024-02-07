@@ -23,6 +23,33 @@
 #define DEVNAME_UNKNOWN "uhd_unknown"
 
 
+// -----------------------------------------------------------------------------------------------
+// ANSI escapes always start with \x1b, or \e, or \033. 
+
+#define RESET     "\x1B[0m"      // Reset (default)
+#define HIGHLIGHT "\x1B[1m"      // surligne (un fond jaune)
+#define UNDERLINE "\x1B[4m"      // souligne
+#define BLINK     "\x1B[5m"      // Reset (default)
+
+#define BLACK    "\x1B[0;30m"    // Black
+#define BBLACK    "\x1B[1;30m"    // Bold Black
+#define RED      "\x1B[0;31m"    // Red
+#define BRED     "\x1B[1;31m"    // Bold Red
+#define GREEN    "\x1B[0;32m"    // Green
+#define BGREEN   "\x1B[1;32m"    // Bold Green
+#define YELLOW   "\x1B[0;33m"    // Yellow
+#define BYELLOW  "\x1B[1;33m"    // Bold Yellow
+#define BLUE     "\x1B[0;34m"    // Blue
+#define BBLUE    "\x1B[1;34m"    // Bold Blue
+#define MAGENTA  "\x1B[0;35m"    // Magenta
+#define BMAGENTA "\x1B[1;35m"    // Bold Magenta
+#define CYAN     "\x1B[0;36m"    // Cyan
+#define BCYAN    "\x1B[1;36m"    // Bold Cyan
+#define WHITE    "\x1B[0;37m"    // White
+#define BWHITE   "\x1B[1;37m"    // Bold White
+// -----------------------------------------------------------------------------------------------
+
+
 
 void print_usage(){
     fprintf(stderr,
@@ -263,7 +290,7 @@ int main(int argc, char* argv[]){
       //REMOVE_SUBSTRING_WITHCOMAS(device_args, "clock=external");
       clock_src = EXTERNAL;
     } else if (strstr(device_args, "clock=gpsdo")) {
-      printf("Using GPSDO clock\n");
+      fprintf(stderr,"Using GPSDO clock\n");
       //REMOVE_SUBSTRING_WITHCOMAS(device_args, "clock=gpsdo");
       clock_src = GPSDO;
     } else {
@@ -274,23 +301,23 @@ int main(int argc, char* argv[]){
 // ===============================================================================
 
 
-   fprintf(stderr, "Device args: %s \n",device_args);
+   fprintf(stderr, "[SDR RX] Device args: %s \n",device_args);
    
    uhd_error status;
     
     
     
     /* Create UHD handler */
-    printf("Opening USRP with args: %s\n", device_args);
+    fprintf(stderr,"[SDR RX] Opening USRP with args: %s\n", device_args);
     uhd_usrp_handle rx_usrp;
     status = uhd_usrp_make(&rx_usrp, device_args); //EXECUTE_OR_GOTO(free_option_strings
     if(status != UHD_ERROR_NONE){
-      fprintf(stderr, "Error opening UHD: code %d\n", status);
+      fprintf(stderr, "[SDR RX] Error opening UHD: code %d\n", status);
       rx_usrp = NULL;
       return -1; 
     }
     
-    if(rx_usrp != NULL){ fprintf(stderr, "Device is detected with success ....\n"); }
+    if(rx_usrp != NULL){ fprintf(stderr, "[SDR RX] Device is detected with success ....\n"); }
     
     if (devname) {
       char dev_str[1024];
@@ -314,18 +341,18 @@ int main(int argc, char* argv[]){
     if (strlen(rx_subdev_str)) {
       uhd_subdev_spec_handle subdev_spec_handle = {0};
 
-      printf("Setting rx_subdev_spec to '%s'\n", rx_subdev_str);
+      fprintf(stderr,"[SDR RX] Setting rx_subdev_spec to '%s'\n", rx_subdev_str);
 
       uhd_subdev_spec_make(&subdev_spec_handle, rx_subdev_str);
       uhd_usrp_set_rx_subdev_spec(rx_usrp, subdev_spec_handle, 0);
       uhd_subdev_spec_free(&subdev_spec_handle);
     }
-    else{ printf("rx_subdev_spec setting is not specified \n"); }
+    else{ fprintf(stderr,"[SDR RX] rx_subdev_spec setting is not specified \n"); }
 
     // Set external clock reference 
     if (clock_src == EXTERNAL) { uhd_usrp_set_clock_source(rx_usrp, "external", 0); } 
     else if (clock_src == GPSDO) { uhd_usrp_set_clock_source(rx_usrp, "gpsdo", 0); }
-    else{ printf("clock source is set to default'\n"); }
+    else{ fprintf(stderr,"[SDR RX] clock source is set to default'\n"); }
     
    // =================================================================
    
@@ -336,7 +363,7 @@ int main(int argc, char* argv[]){
     bool has_rssi = find_string(rx_sensors, "rssi"); 
     uhd_string_vector_free(&rx_sensors);
     
-    fprintf(stderr, "usrp has_rssi = %d...\n", has_rssi);
+    fprintf(stderr, "[SDR RX] usrp has_rssi = %d...\n", has_rssi);
     
     // Set starting gain to half maximum in case of using AGC
     uhd_meta_range_handle rx_gain_range = NULL;
@@ -346,15 +373,15 @@ int main(int argc, char* argv[]){
     double min_gain, max_gain;
     status = uhd_meta_range_start(rx_gain_range, &min_gain);
     status = uhd_meta_range_stop(rx_gain_range, &max_gain);
-    fprintf(stderr, "usrp gain range: %2.3f-%2.3f...\n", min_gain,max_gain);
+    fprintf(stderr, "[SDR RX] usrp gain range: %2.3f-%2.3f...\n", min_gain,max_gain);
     uhd_meta_range_free(&rx_gain_range);
 
   
     // Set Sample Rate
-    fprintf(stderr, "Setting RX Rate: %f...\n", SampleRate);
+    fprintf(stderr, "[SDR RX] Setting RX Rate: %f...\n", SampleRate);
     status = uhd_usrp_set_rx_rate(rx_usrp, SampleRate, channel); //EXECUTE_OR_GOTO(free_rx_metadata,
     status = uhd_usrp_get_rx_rate(rx_usrp, channel, &SampleRate); // EXECUTE_OR_GOTO(free_rx_metadata,
-    fprintf(stderr, "Actual RX Rate: %f...\n", SampleRate);
+    fprintf(stderr, "[SDR RX] Actual RX Rate: %f...\n", SampleRate);
     
     // Set center Frequency
     uhd_tune_request_t tune_request = {
@@ -363,17 +390,17 @@ int main(int argc, char* argv[]){
         .dsp_freq_policy = UHD_TUNE_REQUEST_POLICY_AUTO,
     };
     uhd_tune_result_t tune_result;
-    fprintf(stderr, "Setting RX frequency: %f MHz...\n", CenterFrequency / 1e6);
+    fprintf(stderr, "[SDR RX] Setting RX frequency: %f MHz...\n", CenterFrequency / 1e6);
     status = uhd_usrp_set_rx_freq(rx_usrp, &tune_request, channel, &tune_result);// EXECUTE_OR_GOTO(free_rx_metadata,
     status = uhd_usrp_get_rx_freq(rx_usrp, channel, &CenterFrequency);// EXECUTE_OR_GOTO(free_rx_metadata,
-    fprintf(stderr, "Actual RX frequency: %f MHz...\n", CenterFrequency / 1e6);
+    fprintf(stderr, "[SDR RX] Actual RX frequency: %f MHz...\n", CenterFrequency / 1e6);
 	
 	// Set gain
     double gain = max_gain*gain_ratio;
-    fprintf(stderr, "Setting RX Gain: %f dB...\n", gain);
+    fprintf(stderr, "[SDR RX] Setting RX Gain: %f dB...\n", gain);
     status = uhd_usrp_set_rx_gain(rx_usrp, gain, channel, ""); // EXECUTE_OR_GOTO(free_rx_metadata,
     status = uhd_usrp_get_rx_gain(rx_usrp, channel, "", &gain); // EXECUTE_OR_GOTO(free_rx_metadata,
-    fprintf(stderr, "Actual RX Gain: %f...\n", gain);
+    fprintf(stderr, "[SDR RX] Actual RX Gain: %f...\n", gain);
     
     //set the IF filter bandwidth
 	Bandwidth = 1.4*SampleRate;
@@ -404,12 +431,12 @@ int main(int argc, char* argv[]){
     
     status = uhd_usrp_get_rx_stream(rx_usrp, &stream_args, rx_streamer); // EXECUTE_OR_GOTO(free_rx_streamer
     if(status != UHD_ERROR_NONE){
-      fprintf(stderr, "Error opening TX stream: %d\n", status);
+      fprintf(stderr, "[SDR RX] Error opening TX stream: %d\n", status);
       return -1; 
     }
 	
 	// Issue stream command
-    fprintf(stderr, "Issuing stream command.\n");
+    fprintf(stderr, "[SDR RX] Issuing stream command.\n");
     
     uhd_stream_cmd_t stream_cmd;
     stream_cmd.stream_mode = (total_num_samps == 0) ? UHD_STREAM_MODE_START_CONTINUOUS : UHD_STREAM_MODE_NUM_SAMPS_AND_DONE;
@@ -422,7 +449,7 @@ int main(int argc, char* argv[]){
     size_t BUFFER_SIZE;
     status = uhd_rx_streamer_max_num_samps(rx_streamer, &BUFFER_SIZE); //EXECUTE_OR_GOTO(free_rx_streamer,
 	if(status != UHD_ERROR_NONE){ return -1; }
-    fprintf(stderr, "Buffer size in samples: %zu\n", BUFFER_SIZE);
+    fprintf(stderr, "[SDR RX] Buffer size in samples: %zu\n", BUFFER_SIZE);
     
     
     //double* buff  = malloc(BUFFER_SIZE* 2*sizeof(double));
@@ -458,8 +485,8 @@ int main(int argc, char* argv[]){
 		status = uhd_rx_streamer_recv(rx_streamer, buffs_ptr, BUFFER_SIZE, &rx_metadata, timeout, false, &num_rx_samps);
 		if(status != UHD_ERROR_NONE){ break; }
 		
-		if(num_rx_samps<=0){ fprintf(stderr,"[SDR RX] Error received symbols from LimeSDR, quit \n"); break; }
-        if(num_rx_samps!=BUFFER_SIZE){ fprintf(stderr,"[SDR RX] error: received samples: %d/%d \n",num_rx_samps,BUFFER_SIZE); }
+		if(num_rx_samps<=0){ fprintf(stderr,"%s[SDR RX] Error received symbols from LimeSDR, quit \n%s",RED,RESET); break; }
+        if(num_rx_samps!=BUFFER_SIZE){ fprintf(stderr,"%s[SDR RX] error: received samples: %d/%d \n%s",YELLOW,num_rx_samps,BUFFER_SIZE,RESET); }
 		
 		timeout = 0.1;   //small timeout for subsequent recv
 		
@@ -467,31 +494,31 @@ int main(int argc, char* argv[]){
 		uhd_rx_metadata_error_code(rx_metadata, &error_code);
 		
 		if (error_code == UHD_RX_METADATA_ERROR_CODE_TIMEOUT) {
-			fprintf(stderr,"Timeout while streaming.\n");
+			fprintf(stderr,"%s[SDR RX] Timeout while streaming.\n%s",RED,RESET);
 			break;
 		}
 		
 		if (error_code == UHD_RX_METADATA_ERROR_CODE_OVERFLOW) {
 			if (overflow_message){
 				overflow_message = false;				
-				fprintf(stderr,"Got an overflow indication. Please consider the following:\n Your write medium must sustain a rate of %fMB/s.\nDropped samples will not be written to the file.\nPlease modify this example for your purposes.\nThis message will not appear again.\n",SampleRate/1e6);             
+				fprintf(stderr,"%s[SDR RX] Got an overflow indication. Please consider the following:\n Your write medium must sustain a rate of %fMB/s.\nDropped samples will not be written to the file.\nPlease modify this example for your purposes.\nThis message will not appear again.\n%s",YELLOW,SampleRate/1e6,RESET);             
 			}
 			continue;
 		}
 		
 		if (error_code != UHD_RX_METADATA_ERROR_CODE_NONE) {
-			fprintf(stderr,"Error code 0x%x was returned during streaming. Aborting.\n",error_code);
+			fprintf(stderr,"%s[SDR RX] Error code 0x%x was returned during streaming. Aborting.\n%s",RED,error_code,RESET);
 			break;
 		}
 		
 		// Handle data
         size_t nWrite = fwrite(buff, sizeof(float) * 2, num_rx_samps, output_fid);
-        if(nWrite<num_rx_samps){ fprintf(stderr,"[SDR RX] Error writing data, quit \n"); break; }
+        if(nWrite<num_rx_samps){ fprintf(stderr,"%s[SDR RX] Error writing data, quit \n%s",RED,RESET); break; }
 		
 		int64_t full_secs;
         double frac_secs;
         uhd_rx_metadata_time_spec(rx_metadata, &full_secs, &frac_secs);
-        fprintf(stderr,"Received packet: %zu samples, %.f full secs, %f frac secs\n",num_rx_samps,difftime(full_secs, (int64_t)0),frac_secs);
+        fprintf(stderr,"%s[SDR RX] Received packet: %zu samples, %.f full secs, %f frac secs\n%s",GREEN,num_rx_samps,difftime(full_secs, (int64_t)0),frac_secs,RESET);
 		
 		num_acc_samps += num_rx_samps;
 	}
