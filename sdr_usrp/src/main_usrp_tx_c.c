@@ -172,6 +172,7 @@ int main(int argc, char* argv[]){
     if(SampleRate==0){ fprintf(stderr, "[SDR TX] Need set a SampleRate \n"); exit(0);}
     if(gain_ratio==-1){ fprintf(stderr, "[SDR TX] Need set a Gain \n"); exit(0);}
        
+	   
     // register signal handlers
     if (signal(SIGINT, signal_handler) == SIG_ERR)
         fputs("Warning: Can not install signal handler for SIGINT\n", stderr);
@@ -214,7 +215,7 @@ int main(int argc, char* argv[]){
     char buff_str[128];
     for (size_t i=0;i<n;i++) {
         uhd_string_vector_at(devices_str, i, buff_str, 128);
-        fprintf(stderr, "[SDR TX] devices[%i]: %s \n",i,buff_str);
+        fprintf(stderr, "[SDR TX] devices[%li]: %s \n",i,buff_str);
     }
     
     /* If device type or name not given in args, choose a B200 */
@@ -481,7 +482,7 @@ int main(int argc, char* argv[]){
         // Fill Tx Buffer
         nRead = fread(buff, sizeof(float),2*BUFF_SIZE,input_fid);
         if(nRead<(2*BUFF_SIZE)){
-          if(nRead>0){ fprintf(stderr, "%s[SDR TX] Incomplete buffer %d/%d\n%s",YELLOW,nRead,(2*BUFF_SIZE),RESET); }
+          if(nRead>0){ fprintf(stderr, "%s[SDR TX] Incomplete buffer %ld/%ld\n%s",YELLOW,nRead,(2*BUFF_SIZE),RESET); }
           else{ break; }			  			  
         }
         

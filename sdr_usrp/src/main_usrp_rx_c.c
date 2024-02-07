@@ -215,7 +215,7 @@ int main(int argc, char* argv[]){
     char buff_str[128];
     for (size_t i=0;i<n;i++) {
         uhd_string_vector_at(devices_str, i, buff_str, 128);
-        fprintf(stderr, "devices[%i]: %s \n",i,buff_str);
+        fprintf(stderr, "devices[%li]: %s \n",i,buff_str);
     }
     
     /* If device type or name not given in args, choose a B200 */
@@ -486,7 +486,7 @@ int main(int argc, char* argv[]){
 		if(status != UHD_ERROR_NONE){ break; }
 		
 		if(num_rx_samps<=0){ fprintf(stderr,"%s[SDR RX] Error received symbols from LimeSDR, quit \n%s",RED,RESET); break; }
-        if(num_rx_samps!=BUFFER_SIZE){ fprintf(stderr,"%s[SDR RX] error: received samples: %d/%d \n%s",YELLOW,num_rx_samps,BUFFER_SIZE,RESET); }
+        if(num_rx_samps!=BUFFER_SIZE){ fprintf(stderr,"%s[SDR RX] error: received samples: %ld/%ld \n%s",YELLOW,num_rx_samps,BUFFER_SIZE,RESET); }
 		
 		timeout = 0.1;   //small timeout for subsequent recv
 		
