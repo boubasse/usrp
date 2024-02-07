@@ -371,6 +371,7 @@ int main(int argc, char* argv[]){
     status = uhd_usrp_get_tx_gain_range(tx_usrp, "", channel, tx_metric_range);          
     status = uhd_meta_range_start(tx_metric_range, &min_value);
     status = uhd_meta_range_stop(tx_metric_range, &max_value);
+	double max_gain = max_value;
     fprintf(stderr, "[SDR TX] usrp Gain range: %2.3f-%2.3f...\n", min_value,max_value);
 	
 	//uhd_string_vector_handle antennas_out;
@@ -438,8 +439,7 @@ int main(int argc, char* argv[]){
 	size_t strbuffer_len = 20;
 	status = uhd_usrp_get_tx_antenna(tx_usrp, channel, AntLabel, strbuffer_len);
 	fprintf(stderr, "[SDR TX] Actual RX Antenna: %s...\n", AntLabel);*/
-	
-	
+		
 	// =================================================================
 
     // Create TX streamer

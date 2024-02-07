@@ -371,6 +371,7 @@ int main(int argc, char* argv[]){
     status = uhd_usrp_get_rx_gain_range(rx_usrp, "", channel, rx_metric_range);          
     status = uhd_meta_range_start(rx_metric_range, &min_value);
     status = uhd_meta_range_stop(rx_metric_range, &max_value);
+	double max_gain = max_value;
     fprintf(stderr, "[SDR RX] usrp Gain range: %2.3f-%2.3f...\n", min_value,max_value);
 	
 	//uhd_string_vector_handle antennas_out;
