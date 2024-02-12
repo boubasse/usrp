@@ -610,10 +610,10 @@ int main(int argc, char* argv[]){
 		
 		// Handle data
 		switch(dataTypeIn){
-			case FMT_U8:{ nWrite = fwrite(buff, sizeof(uint8_t) * 2, num_rx_samps, output_fid); }break;
-			case FMT_I16:{ nWrite = fwrite(buff, sizeof(short) * 2, num_rx_samps, output_fid); }break;
-			case FMT_FLOAT:{ nWrite = fwrite(buff, sizeof(float) * 2, num_rx_samps, output_fid); }break;
-			case FMT_DOUBLE:{ nWrite = fwrite(buff, sizeof(double) * 2, num_rx_samps, output_fid); }break;
+			case FMT_U8:{ nWrite = fwrite(uBufferIQ, sizeof(uint8_t) * 2, num_rx_samps, output_fid); }break;
+			case FMT_I16:{ nWrite = fwrite(iBufferIQ, sizeof(short) * 2, num_rx_samps, output_fid); }break;
+			case FMT_FLOAT:{ nWrite = fwrite(fBufferIQ, sizeof(float) * 2, num_rx_samps, output_fid); }break;
+			case FMT_DOUBLE:{ nWrite = fwrite(dBufferIQ, sizeof(double) * 2, num_rx_samps, output_fid); }break;
 		}
         if(nWrite<num_rx_samps){ fprintf(stderr,"%s[SDR RX] Error writing data, quit \n%s",RED,RESET); break; }
 		
