@@ -414,7 +414,7 @@ int main(int argc, char* argv[]){
     }
     else{ fprintf(stderr,"[SDR RX] rx_subdev_spec setting is not specified \n"); }
     
-	uhd_subdev_spec_handle subdev_spec_out
+	uhd_subdev_spec_handle subdev_spec_out;
 	status = uhd_usrp_get_rx_subdev_spec(rx_usrp,mboard, subdev_spec_out);
 	fprintf(stderr, "[SDR RX] Actual rx_subdev_spec: %s...\n", subdev_spec_out);
 	uhd_subdev_spec_free(&subdev_spec_out);
