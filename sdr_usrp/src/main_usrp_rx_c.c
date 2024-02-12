@@ -545,10 +545,10 @@ int main(int argc, char* argv[]){
 	double* dBufferIQ  = malloc(BUFFER_SIZE* 2*sizeof(double));
     
     
-	const void** uBufferIQ_ptr = (const void**)&uBufferIQ;
-	const void** iBufferIQ_ptr = (const void**)&iBufferIQ;
-    const void** fBufferIQ_ptr = (const void**)&fBufferIQ;
-    const void** dBufferIQ_ptr = (const void**)&dBufferIQ;
+	void** uBufferIQ_ptr = (void**)&uBufferIQ;
+	void** iBufferIQ_ptr = (void**)&iBufferIQ;
+    void** fBufferIQ_ptr = (void**)&fBufferIQ;
+    void** dBufferIQ_ptr = (void**)&dBufferIQ;
     
     // Create RX metadata
     uhd_rx_metadata_handle rx_metadata;
