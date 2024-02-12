@@ -425,9 +425,9 @@ int main(int argc, char* argv[]){
     else if (clock_src == GPSDO) { uhd_usrp_set_clock_source(rx_usrp, "gpsdo", mboard); }
     else{ fprintf(stderr,"[SDR RX] clock source is set to default'\n"); }
 	
-	char* time_source_out = "";
+	/* char* time_source_out = "";
 	status = uhd_usrp_get_time_source(rx_usrp,mboard, time_source_out, 50);
-	fprintf(stderr, "[SDR RX] Actual TX Time Source: %s...\n", time_source_out);
+	fprintf(stderr, "[SDR RX] Actual TX Time Source: %s...\n", time_source_out); */
 	
 	// Set Master Clock
 	if (current_master_clock>0){
