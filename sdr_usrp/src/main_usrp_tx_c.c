@@ -106,7 +106,7 @@ int main(int argc, char* argv[]){
     
     size_t total_num_samps  = 0;
     /*char *otw_format        = "sc16";*/
-    size_t channel          = 0;
+    size_t CHAN          = 0;
     
     double CenterFrequency  = 2e9;
     double SampleRate       = 1e6;
@@ -305,7 +305,7 @@ int main(int argc, char* argv[]){
    // UHD_API uhd_error uhd_usrp_get_pp_string(uhd_usrp_handle h, char* pp_string_out, size_t strbuffer_len);
    // UHD_API uhd_error uhd_usrp_get_mboard_name(uhd_usrp_handle h, size_t mboard, char* mboard_name_out, size_t strbuffer_len); (vv)
    // UHD_API uhd_error uhd_usrp_get_tx_subdev_name(uhd_usrp_handle h, size_t chan, char* tx_subdev_name_out, size_t strbuffer_len);
-   // UHD_API uhd_error uhd_usrp_get_tx_num_channels(uhd_usrp_handle h, size_t* num_channels_out);
+   // UHD_API uhd_error uhd_usrp_get_tx_num_CHANs(uhd_usrp_handle h, size_t* num_CHANs_out);
    // UHD_API uhd_error uhd_usrp_get_tx_lo_names(uhd_usrp_handle h, size_t chan, uhd_string_vector_handle* tx_lo_names_out);
    // UHD_API uhd_error uhd_usrp_get_tx_lo_source(uhd_usrp_handle h,const char* name,size_t chan,char* tx_lo_source_out,size_t strbuffer_len);
    // UHD_API uhd_error uhd_usrp_get_tx_lo_sources(uhd_usrp_handle h,const char* name,size_t chan,uhd_string_vector_handle* tx_lo_sources_out);
@@ -361,31 +361,31 @@ int main(int argc, char* argv[]){
     uhd_meta_range_make(&tx_metric_range);
 	double min_value, max_value,step_value;
 	
-	status = uhd_usrp_get_fe_tx_freq_range(tx_usrp, channel, tx_metric_range);          
+	status = uhd_usrp_get_fe_tx_freq_range(tx_usrp, CHAN, tx_metric_range);          
     status = uhd_meta_range_start(tx_metric_range, &min_value);
     status = uhd_meta_range_stop(tx_metric_range, &max_value);
 	status = uhd_meta_range_step(tx_metric_range, &step_value);
     fprintf(stderr, "[SDR TX] usrp DAC Frequency range: %2.3f to %2.3f step %2.3f...\n", min_value,max_value,step_value);
 	
-	status = uhd_usrp_get_tx_rates(tx_usrp, channel, tx_metric_range);          
+	status = uhd_usrp_get_tx_rates(tx_usrp, CHAN, tx_metric_range);          
     status = uhd_meta_range_start(tx_metric_range, &min_value);
     status = uhd_meta_range_stop(tx_metric_range, &max_value);
 	status = uhd_meta_range_step(tx_metric_range, &step_value);
     fprintf(stderr, "[SDR TX] usrp Sample Rate range: %2.3f to %2.3f step %2.3f...\n", min_value,max_value,step_value);
 	
-	status = uhd_usrp_get_tx_freq_range(tx_usrp, channel, tx_metric_range);           
+	status = uhd_usrp_get_tx_freq_range(tx_usrp, CHAN, tx_metric_range);           
     status = uhd_meta_range_start(tx_metric_range, &min_value);
     status = uhd_meta_range_stop(tx_metric_range, &max_value);
 	status = uhd_meta_range_step(tx_metric_range, &step_value);
     fprintf(stderr, "[SDR TX] usrp Center Frequency range: %2.3f to %2.3f step %2.3f...\n", min_value,max_value,step_value);
 	
-	status = uhd_usrp_get_tx_bandwidth_range(tx_usrp, channel, tx_metric_range);          
+	status = uhd_usrp_get_tx_bandwidth_range(tx_usrp, CHAN, tx_metric_range);          
     status = uhd_meta_range_start(tx_metric_range, &min_value);
     status = uhd_meta_range_stop(tx_metric_range, &max_value);
 	status = uhd_meta_range_step(tx_metric_range, &step_value);
     fprintf(stderr, "[SDR TX] usrp Bandwidth range: %2.3f to %2.3f step %2.3f...\n", min_value,max_value,step_value);
 	
-    status = uhd_usrp_get_tx_gain_range(tx_usrp, "", channel, tx_metric_range);          
+    status = uhd_usrp_get_tx_gain_range(tx_usrp, "", CHAN, tx_metric_range);          
     status = uhd_meta_range_start(tx_metric_range, &min_value);
     status = uhd_meta_range_stop(tx_metric_range, &max_value);
 	status = uhd_meta_range_step(tx_metric_range, &step_value);
@@ -393,7 +393,7 @@ int main(int argc, char* argv[]){
     fprintf(stderr, "[SDR TX] usrp Gain range: %2.3f to %2.3f step %2.3f...\n", min_value,max_value,step_value);
 	
 	//uhd_string_vector_handle antennas_out;
-	//status = uhd_usrp_get_tx_antennas(tx_usrp, channel, &antennas_out);
+	//status = uhd_usrp_get_tx_antennas(tx_usrp, CHAN, &antennas_out);
 	//status = uhd_usrp_get_clock_sources(rx_usrp, mboard, &antennas_out);
 	//uhd_string_vector_free(&antennas_out);
 	
@@ -441,8 +441,8 @@ int main(int argc, char* argv[]){
   
     // Set Sample Rate
     fprintf(stderr, "[SDR TX] Setting TX Rate: %f...\n", SampleRate);
-    status = uhd_usrp_set_tx_rate(tx_usrp, SampleRate, channel); //EXECUTE_OR_GOTO(free_tx_metadata,
-    status = uhd_usrp_get_tx_rate(tx_usrp, channel, &SampleRate); // EXECUTE_OR_GOTO(free_tx_metadata,
+    status = uhd_usrp_set_tx_rate(tx_usrp, SampleRate, CHAN); //EXECUTE_OR_GOTO(free_tx_metadata,
+    status = uhd_usrp_get_tx_rate(tx_usrp, CHAN, &SampleRate); // EXECUTE_OR_GOTO(free_tx_metadata,
     fprintf(stderr, "[SDR TX] Actual TX Rate: %f...\n", SampleRate);
     
 	// Set center Frequency
@@ -453,30 +453,30 @@ int main(int argc, char* argv[]){
     };
     uhd_tune_result_t tune_result;
     fprintf(stderr, "[SDR TX] Setting TX frequency: %f MHz...\n", CenterFrequency / 1e6);
-    status = uhd_usrp_set_tx_freq(tx_usrp, &tune_request, channel, &tune_result);// EXECUTE_OR_GOTO(free_tx_metadata,
-    status = uhd_usrp_get_tx_freq(tx_usrp, channel, &CenterFrequency);// EXECUTE_OR_GOTO(free_tx_metadata,
+    status = uhd_usrp_set_tx_freq(tx_usrp, &tune_request, CHAN, &tune_result);// EXECUTE_OR_GOTO(free_tx_metadata,
+    status = uhd_usrp_get_tx_freq(tx_usrp, CHAN, &CenterFrequency);// EXECUTE_OR_GOTO(free_tx_metadata,
     fprintf(stderr, "[SDR TX] Actual TX frequency: %f MHz...\n", CenterFrequency / 1e6);
     
     // Set gain
     double gain = max_gain*gain_ratio;
     fprintf(stderr, "[SDR TX] Setting TX Gain: %f dB...\n", gain);
-    status = uhd_usrp_set_tx_gain(tx_usrp, gain, channel, ""); // EXECUTE_OR_GOTO(free_tx_metadata,
-    status = uhd_usrp_get_tx_gain(tx_usrp, channel, "", &gain); // EXECUTE_OR_GOTO(free_tx_metadata,
+    status = uhd_usrp_set_tx_gain(tx_usrp, gain, CHAN, ""); // EXECUTE_OR_GOTO(free_tx_metadata,
+    status = uhd_usrp_get_tx_gain(tx_usrp, CHAN, "", &gain); // EXECUTE_OR_GOTO(free_tx_metadata,
     fprintf(stderr, "[SDR TX] Actual TX Gain: %f...\n", gain);
     
     //set the IF filter bandwidth
 	fprintf(stderr, "[SDR TX] Setting RX Bandwidth: %f...\n", Bandwidth);
-    status = uhd_usrp_set_tx_bandwidth(tx_usrp, Bandwidth, channel); //EXECUTE_OR_GOTO(free_tx_metadata,
-	status = uhd_usrp_get_tx_bandwidth(tx_usrp, channel, &Bandwidth); // EXECUTE_OR_GOTO(free_tx_metadata,
+    status = uhd_usrp_set_tx_bandwidth(tx_usrp, Bandwidth, CHAN); //EXECUTE_OR_GOTO(free_tx_metadata,
+	status = uhd_usrp_get_tx_bandwidth(tx_usrp, CHAN, &Bandwidth); // EXECUTE_OR_GOTO(free_tx_metadata,
 	fprintf(stderr, "[SDR TX] Actual RX Bandwidth: %f...\n", Bandwidth);
 
 	
     //set the antenna 
 	/*char* AntLabel = "RX1";
 	fprintf(stderr, "[SDR TX] Setting RX Antenna: %s...\n", AntLabel);
-    status = uhd_usrp_set_tx_antenna(tx_usrp, AntLabel, channel);
+    status = uhd_usrp_set_tx_antenna(tx_usrp, AntLabel, CHAN);
 	size_t strbuffer_len = 20;
-	status = uhd_usrp_get_tx_antenna(tx_usrp, channel, AntLabel, strbuffer_len);
+	status = uhd_usrp_get_tx_antenna(tx_usrp, CHAN, AntLabel, strbuffer_len);
 	fprintf(stderr, "[SDR TX] Actual RX Antenna: %s...\n", AntLabel);*/
 		
 	// =================================================================
@@ -491,7 +491,7 @@ int main(int argc, char* argv[]){
     
     stream_args.otw_format = "sc16";
     stream_args.args = "";
-    stream_args.channel_list = &channel;
+    stream_args.channel_list = &CHAN;
     stream_args.n_channels = 1;
 
     //stream_args.cpu_format = "fc64";

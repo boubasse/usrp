@@ -491,8 +491,8 @@ int main(int argc, char* argv[]){
     
     stream_args.otw_format = "sc16";
     stream_args.args = "";
-    stream_args.CHAN_list = &CHAN;
-    stream_args.n_CHANs = 1;
+    stream_args.channel_list = &CHAN;
+    stream_args.n_channels = 1;
 
     //stream_args.cpu_format = "fc64";
     //stream_args.cpu_format = "fc32";
