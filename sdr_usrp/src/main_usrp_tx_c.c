@@ -49,17 +49,24 @@
 #define BWHITE   "\x1B[1;37m"    // Bold White
 // -----------------------------------------------------------------------------------------------
 
-
+enum FMT_DATA_TYPE {
+	FMT_U8 = 0,
+	FMT_I16,
+	FMT_FLOAT,
+	FMT_DOUBLE
+};
 
 void print_usage(){
     fprintf(stderr,
-        "main_usrp_tx_c - A simple TX example using UHD's C API\n\n"
+        "main_usrp_rx_c - A simple TX example using UHD's C API\n\n"
 
         "Options:\n"
-        "    -o (output fid)\n"
-        "    -f (frequency in Hz)\n"
+        "    -i (input fid)\n"
+        "    -f (center frequency in Hz)\n"
         "    -s (sample rate in Hz)\n"
+		"    -b (bandwidth in Hz)\n"
         "    -g (gain ratio 0..100)\n"
+		"    -t (dataType {u8,i16,float,double})\n"
         "    -h (print this help message)\n");
 }
 
@@ -101,25 +108,26 @@ int main(int argc, char* argv[]){
     }
 	
 	
-	
     FILE *input_fid = stdin;
+	
+	char tx_subdev_str[64] = {0};
+	enum {DEFAULT, EXTERNAL, GPSDO} clock_src = DEFAULT;
     
     size_t total_num_samps  = 0;
-    /*char *otw_format        = "sc16";*/
-    size_t CHAN          = 0;
+    int dataTypeIn = FMT_I16; //cpu_format
+    size_t CHAN = 0;
     
-    double CenterFrequency  = 2e9;
-    double SampleRate       = 1e6;
-    double gain_ratio       = 0.7;
-	double Bandwidth        = 1.4e6;
+    double m_CenterFrequency  = 2e9;
+    double m_SampleRate       = 1e6;
+    double m_gainRatio        = 0.7;
+	double m_Bandwidth        = 0.0;
     
-    Bandwidth = 1.4*SampleRate;
 
     int a;
 	bool anyargs = false;
     while(1){
 		
-		a = getopt(argc, argv, "i:s:f:g:h:");
+		a = getopt(argc, argv, "i:s:b:f:g:t:h:");
 		if(a==-1){
 			if(anyargs){ break; }
 			else       { a = 'h'; } //print usage and exit
@@ -137,13 +145,22 @@ int main(int argc, char* argv[]){
 					}
 				}break;
 			case 's':{ // SymbolRate in KS
-					SampleRate = atol(optarg);
+					m_SampleRate = atol(optarg);
+				}break;
+			case 'b':{ // Bandwidth in KS
+					m_Bandwidth = atol(optarg);
 				}break;
 			case 'f':{ // TxFrequency in Mhz
-					CenterFrequency = atol(optarg);
+					m_CenterFrequency = atol(optarg);
 				}break;
 			case 'g':{ // Gain 0..100
-					gain_ratio = atoi(optarg)/100.0;
+					m_gainRatio = atoi(optarg)/100.0;
+				}break;
+			case 't':{ // Input CPU Data Type
+			        if (strcmp("double", optarg) == 0){ dataTypeIn = FMT_DOUBLE; }
+					if (strcmp("float", optarg) == 0){ dataTypeIn = FMT_FLOAT; }
+					if (strcmp("i16", optarg) == 0)  { dataTypeIn = FMT_I16;   }
+					if (strcmp("u8", optarg) == 0)   { dataTypeIn = FMT_U8;    }
 				}break;
 			case 'h':{ // help
 					print_usage();
@@ -168,9 +185,9 @@ int main(int argc, char* argv[]){
     if(isapipe){ fprintf(stderr, "[SDR TX] Using IQ live mode\n"); }
     else       { fprintf(stderr, "[SDR TX] Read from data File\n"); }	
     
-    if(CenterFrequency==0){ fprintf(stderr, "[SDR TX] Need set a frequency to tx\n"); exit(0);}
-    if(SampleRate==0){ fprintf(stderr, "[SDR TX] Need set a SampleRate \n"); exit(0);}
-    if(gain_ratio==-1){ fprintf(stderr, "[SDR TX] Need set a Gain \n"); exit(0);}
+    if(m_CenterFrequency<=0){ fprintf(stderr, "[SDR TX] Need set a frequency to tx\n"); exit(0);}
+    if(m_SampleRate<=0){ fprintf(stderr, "[SDR TX] Need set a SampleRate \n"); exit(0);}
+    if(m_gainRatio<=0){ fprintf(stderr, "[SDR TX] Need set a Gain \n"); exit(0);}
        
 	   
     // register signal handlers
@@ -274,7 +291,6 @@ int main(int argc, char* argv[]){
     
     
     // Set transmitter subdevice spec string
-    char tx_subdev_str[64] = {0};
     char *tx_subdev_ptr = strstr(device_args, "tx_subdev_spec=");
     if (tx_subdev_ptr) {
       //copy_subdev_string(tx_subdev_str, tx_subdev_ptr + strlen(tx_subdev_arg));
@@ -282,7 +298,6 @@ int main(int argc, char* argv[]){
     }
     
     // Check external clock argument
-    enum {DEFAULT, EXTERNAL, GPSDO} clock_src;
     if (strstr(device_args, "clock=external")) {
       //REMOVE_SUBSTRING_WITHCOMAS(device_args, "clock=external");
       clock_src = EXTERNAL;
@@ -384,6 +399,7 @@ int main(int argc, char* argv[]){
     status = uhd_meta_range_stop(tx_metric_range, &max_value);
 	status = uhd_meta_range_step(tx_metric_range, &step_value);
     fprintf(stderr, "[SDR TX] usrp Bandwidth range: %2.3f to %2.3f step %2.3f...\n", min_value,max_value,step_value);
+	if(m_Bandwidth==0){ m_Bandwidth = 1.4*m_SampleRate; if(m_Bandwidth>max_value){ m_Bandwidth = max_value; } }
 	
     status = uhd_usrp_get_tx_gain_range(tx_usrp, "", CHAN, tx_metric_range);          
     status = uhd_meta_range_start(tx_metric_range, &min_value);
@@ -393,6 +409,7 @@ int main(int argc, char* argv[]){
     fprintf(stderr, "[SDR TX] usrp Gain range: %2.3f to %2.3f step %2.3f...\n", min_value,max_value,step_value);
 	
 	//uhd_string_vector_handle antennas_out;
+	//uhd_string_vector_make(&antennas_out);
 	//status = uhd_usrp_get_tx_antennas(tx_usrp, CHAN, &antennas_out);
 	//status = uhd_usrp_get_clock_sources(rx_usrp, mboard, &antennas_out);
 	//uhd_string_vector_free(&antennas_out);
@@ -404,10 +421,9 @@ int main(int argc, char* argv[]){
     
     // Set transmitter subdev spec if specified
     if (strlen(tx_subdev_str)) {
-      uhd_subdev_spec_handle subdev_spec_handle = {0};
-
       fprintf(stderr,"[SDR TX] Setting tx_subdev_spec to '%s'\n", tx_subdev_str);
-
+	  
+      uhd_subdev_spec_handle subdev_spec_handle = {0};
       uhd_subdev_spec_make(&subdev_spec_handle, tx_subdev_str);
       status = uhd_usrp_set_tx_subdev_spec(tx_usrp, subdev_spec_handle, mboard);
       uhd_subdev_spec_free(&subdev_spec_handle);
@@ -425,8 +441,8 @@ int main(int argc, char* argv[]){
     else if (clock_src == GPSDO) { status = uhd_usrp_set_clock_source(tx_usrp, "gpsdo", mboard); }
     else{ fprintf(stderr,"[SDR TX] clock source is set to default'\n"); }
 	
-	/* char* time_source_out = "";
-	status = uhd_usrp_get_time_source(tx_usrp,mboard, time_source_out, 50);
+	/* char time_source_out[128];
+	status = uhd_usrp_get_time_source(tx_usrp, mboard, time_source_out, 128);
 	fprintf(stderr, "[SDR TX] Actual TX Time Source: %s...\n", time_source_out); */
 	
 	// Set Master Clock
@@ -440,35 +456,35 @@ int main(int argc, char* argv[]){
 	fprintf(stderr, "[SDR TX] Actual master clock rate: %f...\n", current_master_clock);
   
     // Set Sample Rate
-    fprintf(stderr, "[SDR TX] Setting TX Rate: %f...\n", SampleRate);
-    status = uhd_usrp_set_tx_rate(tx_usrp, SampleRate, CHAN); //EXECUTE_OR_GOTO(free_tx_metadata,
-    status = uhd_usrp_get_tx_rate(tx_usrp, CHAN, &SampleRate); // EXECUTE_OR_GOTO(free_tx_metadata,
-    fprintf(stderr, "[SDR TX] Actual TX Rate: %f...\n", SampleRate);
+    fprintf(stderr, "[SDR TX] Setting TX Rate: %f...\n", m_SampleRate);
+    status = uhd_usrp_set_tx_rate(tx_usrp, m_SampleRate, CHAN); //EXECUTE_OR_GOTO(free_tx_metadata,
+    status = uhd_usrp_get_tx_rate(tx_usrp, CHAN, &m_SampleRate); // EXECUTE_OR_GOTO(free_tx_metadata,
+    fprintf(stderr, "[SDR TX] Actual TX Rate: %f...\n", m_SampleRate);
     
 	// Set center Frequency
     uhd_tune_request_t tune_request = {
-        .target_freq     = CenterFrequency,
+        .target_freq     = m_CenterFrequency,
         .rf_freq_policy  = UHD_TUNE_REQUEST_POLICY_AUTO,
         .dsp_freq_policy = UHD_TUNE_REQUEST_POLICY_AUTO,
     };
     uhd_tune_result_t tune_result;
-    fprintf(stderr, "[SDR TX] Setting TX frequency: %f MHz...\n", CenterFrequency / 1e6);
+    fprintf(stderr, "[SDR TX] Setting TX frequency: %f MHz...\n", m_CenterFrequency / 1e6);
     status = uhd_usrp_set_tx_freq(tx_usrp, &tune_request, CHAN, &tune_result);// EXECUTE_OR_GOTO(free_tx_metadata,
-    status = uhd_usrp_get_tx_freq(tx_usrp, CHAN, &CenterFrequency);// EXECUTE_OR_GOTO(free_tx_metadata,
-    fprintf(stderr, "[SDR TX] Actual TX frequency: %f MHz...\n", CenterFrequency / 1e6);
+    status = uhd_usrp_get_tx_freq(tx_usrp, CHAN, &m_CenterFrequency);// EXECUTE_OR_GOTO(free_tx_metadata,
+    fprintf(stderr, "[SDR TX] Actual TX frequency: %f MHz...\n", m_CenterFrequency / 1e6);
     
     // Set gain
-    double gain = max_gain*gain_ratio;
+    double gain = max_gain*m_gainRatio;
     fprintf(stderr, "[SDR TX] Setting TX Gain: %f dB...\n", gain);
     status = uhd_usrp_set_tx_gain(tx_usrp, gain, CHAN, ""); // EXECUTE_OR_GOTO(free_tx_metadata,
     status = uhd_usrp_get_tx_gain(tx_usrp, CHAN, "", &gain); // EXECUTE_OR_GOTO(free_tx_metadata,
     fprintf(stderr, "[SDR TX] Actual TX Gain: %f...\n", gain);
     
     //set the IF filter bandwidth
-	fprintf(stderr, "[SDR TX] Setting RX Bandwidth: %f...\n", Bandwidth);
-    status = uhd_usrp_set_tx_bandwidth(tx_usrp, Bandwidth, CHAN); //EXECUTE_OR_GOTO(free_tx_metadata,
-	status = uhd_usrp_get_tx_bandwidth(tx_usrp, CHAN, &Bandwidth); // EXECUTE_OR_GOTO(free_tx_metadata,
-	fprintf(stderr, "[SDR TX] Actual RX Bandwidth: %f...\n", Bandwidth);
+	fprintf(stderr, "[SDR TX] Setting RX Bandwidth: %f...\n", m_Bandwidth);
+    status = uhd_usrp_set_tx_bandwidth(tx_usrp, m_Bandwidth, CHAN); //EXECUTE_OR_GOTO(free_tx_metadata,
+	status = uhd_usrp_get_tx_bandwidth(tx_usrp, CHAN, &m_Bandwidth); // EXECUTE_OR_GOTO(free_tx_metadata,
+	fprintf(stderr, "[SDR TX] Actual RX Bandwidth: %f...\n", m_Bandwidth);
 
 	
     //set the antenna 
@@ -493,13 +509,12 @@ int main(int argc, char* argv[]){
     stream_args.args = "";
     stream_args.channel_list = &CHAN;
     stream_args.n_channels = 1;
-
-    //stream_args.cpu_format = "fc64";
-    //stream_args.cpu_format = "fc32";
-    stream_args.cpu_format = "sc16";
-    //stream_args.cpu_format = "sc8";
-    
-    
+	switch(dataTypeIn){
+		case FMT_U8:{ stream_args.cpu_format = "sc8"; }break;
+		case FMT_I16:{ stream_args.cpu_format = "sc16"; }break;
+		case FMT_FLOAT:{ stream_args.cpu_format = "fc32"; }break;
+		case FMT_DOUBLE:{ stream_args.cpu_format = "fc64"; }break;
+	}
     
     status = uhd_usrp_get_tx_stream(tx_usrp, &stream_args, tx_streamer); // EXECUTE_OR_GOTO(free_tx_streamer
     if(status != UHD_ERROR_NONE){
@@ -513,15 +528,17 @@ int main(int argc, char* argv[]){
 	if(status != UHD_ERROR_NONE){ return -1; }
     fprintf(stderr, "[SDR TX] Buffer size in samples: %zu\n", BUFF_SIZE);
     
+	
+	uint8_t* uBufferIQ  = calloc(sizeof(uint8_t), BUFF_SIZE * 2);
+	short* iBufferIQ  = calloc(sizeof(short), BUFF_SIZE * 2);
+	float* fBufferIQ  = calloc(sizeof(float), BUFF_SIZE * 2);
+	double* dBufferIQ  = calloc(sizeof(double), BUFF_SIZE * 2);
     
-    //double* buff  = calloc(sizeof(double), BUFF_SIZE * 2);
-    //float* buff  = calloc(sizeof(float), BUFF_SIZE * 2);
-    short* buff  = calloc(sizeof(short), BUFF_SIZE * 2);
-	//uint8_t* buff  = calloc(sizeof(uint8_t), BUFF_SIZE * 2);
     
-    
-    
-    const void** buffs_ptr = (const void**)&buff;
+	const void** uBufferIQ_ptr = (const void**)&uBufferIQ;
+	const void** iBufferIQ_ptr = (const void**)&iBufferIQ;
+    const void** fBufferIQ_ptr = (const void**)&fBufferIQ;
+    const void** dBufferIQ_ptr = (const void**)&dBufferIQ;
     
     // Create TX metadata
     uhd_tx_metadata_handle tx_metadata;
@@ -543,9 +560,9 @@ int main(int argc, char* argv[]){
 	float timeout = 0.1;
 	 
     // Actual streaming
-    uint64_t num_acc_samps = 0;
     m_keep_running = (status == UHD_ERROR_NONE);
     
+	uint64_t num_acc_samps = 0;
     size_t num_samps_sent  = 0;
     size_t nRead = 0;
     while (m_keep_running) {
@@ -553,13 +570,23 @@ int main(int argc, char* argv[]){
         if(total_num_samps > 0 && num_acc_samps >= total_num_samps){ break; }
 		
         // Fill Tx Buffer
-        nRead = fread(buff, sizeof(float),2*BUFF_SIZE,input_fid);
+		switch(dataTypeIn){
+			case FMT_U8:{ nRead = fread(uBufferIQ, sizeof(uint8_t),2*BUFF_SIZE,input_fid); }break;
+			case FMT_I16:{ nRead = fread(iBufferIQ, sizeof(short),2*BUFF_SIZE,input_fid); }break;
+			case FMT_FLOAT:{ nRead = fread(fBufferIQ, sizeof(float),2*BUFF_SIZE,input_fid); }break;
+			case FMT_DOUBLE:{ nRead = fread(dBufferIQ, sizeof(double),2*BUFF_SIZE,input_fid); }break;
+		}
         if(nRead<(2*BUFF_SIZE)){
           if(nRead>0){ fprintf(stderr, "%s[SDR TX] Incomplete buffer %ld/%ld\n%s",YELLOW,nRead,(2*BUFF_SIZE),RESET); }
           else{ break; }			  			  
         }
         
-        status = uhd_tx_streamer_send(tx_streamer, buffs_ptr, BUFF_SIZE, &tx_metadata, timeout, &num_samps_sent);//EXECUTE_OR_GOTO(free_buff,
+		switch(dataTypeIn){
+			case FMT_U8:{ status = uhd_tx_streamer_send(tx_streamer, uBufferIQ_ptr, BUFF_SIZE, &tx_metadata, timeout, &num_samps_sent); }break;
+			case FMT_I16:{ status = uhd_tx_streamer_send(tx_streamer, iBufferIQ_ptr, BUFF_SIZE, &tx_metadata, timeout, &num_samps_sent); }break;
+			case FMT_FLOAT:{ status = uhd_tx_streamer_send(tx_streamer, fBufferIQ_ptr, BUFF_SIZE, &tx_metadata, timeout, &num_samps_sent); }break;
+			case FMT_DOUBLE:{ status = uhd_tx_streamer_send(tx_streamer, dBufferIQ_ptr, BUFF_SIZE, &tx_metadata, timeout, &num_samps_sent); }break;
+		}
 		if(status != UHD_ERROR_NONE){ break; }
         
         fprintf(stderr, "%s[SDR TX] Sent %zu samples\n%s", GREEN,num_samps_sent,RESET);

@@ -49,7 +49,12 @@
 #define BWHITE   "\x1B[1;37m"    // Bold White
 // -----------------------------------------------------------------------------------------------
 
-
+enum FMT_DATA_TYPE {
+	FMT_U8 = 0,
+	FMT_I16,
+	FMT_FLOAT,
+	FMT_DOUBLE
+};
 
 void print_usage(){
     fprintf(stderr,
@@ -57,9 +62,11 @@ void print_usage(){
 
         "Options:\n"
         "    -o (output fid)\n"
-        "    -f (frequency in Hz)\n"
+        "    -f (center frequency in Hz)\n"
         "    -s (sample rate in Hz)\n"
+		"    -b (bandwidth in Hz)\n"
         "    -g (gain ratio 0..100)\n"
+		"    -t (dataType {u8,i16,float,double})\n"
         "    -h (print this help message)\n");
 }
 
@@ -103,23 +110,24 @@ int main(int argc, char* argv[]){
 	
     FILE *output_fid = stdout;
     
-        
+    char tx_subdev_str[64] = {0};
+	enum {DEFAULT, EXTERNAL, GPSDO} clock_src = DEFAULT;
+    
     size_t total_num_samps  = 0;
-    /*char *otw_format        = "sc16"; // sc12*/
+    int dataTypeIn = FMT_I16; //cpu_format
     size_t CHAN          = 0;
     
-    double CenterFrequency  = 2e9;
-    double SampleRate       = 1e6;
-    double gain_ratio       = 0.7;
-	double Bandwidth        = 1.4e6;
+    double m_CenterFrequency  = 2e9;
+    double m_SampleRate       = 1e6;
+    double m_gainRatio        = 0.7;
+	double m_Bandwidth        = 0.0;
     
-	Bandwidth = 1.4*SampleRate;
 	
     int a;
 	bool anyargs = false;
     while(1){
 		
-		a = getopt(argc, argv, "o:s:f:g:h:");
+		a = getopt(argc, argv, "o:s:b:f:g:t:h:");
 		if(a==-1){
 			if(anyargs){ break; }
 			else       { a = 'h'; } //print usage and exit
@@ -137,13 +145,22 @@ int main(int argc, char* argv[]){
 					}
 				}break;
 			case 's':{ // SymbolRate in KS
-					SampleRate = atol(optarg);
+					m_SampleRate = atol(optarg);
+				}break;
+			case 'b':{ // Bandwidth in KS
+					m_Bandwidth = atol(optarg);
 				}break;
 			case 'f':{ // RxFrequency in Mhz
-					CenterFrequency = atol(optarg);
+					m_CenterFrequency = atol(optarg);
 				}break;
 			case 'g':{ // Gain 0..100
-					gain_ratio = atoi(optarg)/100.0;
+					m_gainRatio = atoi(optarg)/100.0;
+				}break;
+			case 't':{ // Input CPU Data Type
+			        if (strcmp("double", optarg) == 0){ dataTypeIn = FMT_DOUBLE; }
+					if (strcmp("float", optarg) == 0){ dataTypeIn = FMT_FLOAT; }
+					if (strcmp("i16", optarg) == 0)  { dataTypeIn = FMT_I16;   }
+					if (strcmp("u8", optarg) == 0)   { dataTypeIn = FMT_U8;    }
 				}break;
 			case 'h':{ // help
 					print_usage();
@@ -168,9 +185,9 @@ int main(int argc, char* argv[]){
     if(isapipe){ fprintf(stderr, "[SDR RX] Using IQ live mode\n"); }
     else       { fprintf(stderr, "[SDR RX] Read from data File\n"); }	
     
-    if(CenterFrequency==0){ fprintf(stderr, "[SDR RX] Need set a frequency to rx\n"); exit(0);}
-    if(SampleRate==0){ fprintf(stderr, "[SDR RX] Need set a SampleRate \n"); exit(0);}
-    if(gain_ratio==-1){ fprintf(stderr, "[SDR RX] Need set a Gain \n"); exit(0);}
+    if(m_CenterFrequency<=0){ fprintf(stderr, "[SDR RX] Need set a frequency to rx\n"); exit(0);}
+    if(m_SampleRate<=0){ fprintf(stderr, "[SDR RX] Need set a SampleRate \n"); exit(0);}
+    if(m_gainRatio<=0){ fprintf(stderr, "[SDR RX] Need set a Gain \n"); exit(0);}
        
     
     // register signal handlers
@@ -274,7 +291,6 @@ int main(int argc, char* argv[]){
     
     
     // Set transmitter subdevice spec string
-    char rx_subdev_str[64] = {0};
     char *rx_subdev_ptr = strstr(device_args, "rx_subdev_spec=");
     if (rx_subdev_ptr) {
       //copy_subdev_string(rx_subdev_str, rx_subdev_ptr + strlen(rx_subdev_arg));
@@ -282,7 +298,6 @@ int main(int argc, char* argv[]){
     }
     
     // Check external clock argument
-    enum {DEFAULT, EXTERNAL, GPSDO} clock_src;
     if (strstr(device_args, "clock=external")) {
       //REMOVE_SUBSTRING_WITHCOMAS(device_args, "clock=external");
       clock_src = EXTERNAL;
@@ -384,6 +399,7 @@ int main(int argc, char* argv[]){
     status = uhd_meta_range_stop(rx_metric_range, &max_value);
 	status = uhd_meta_range_step(rx_metric_range, &step_value);
     fprintf(stderr, "[SDR RX] usrp Bandwidth range: %2.3f to %2.3f step %2.3f...\n", min_value,max_value,step_value);
+	if(m_Bandwidth==0){ m_Bandwidth = 1.4*m_SampleRate; if(m_Bandwidth>max_value){ m_Bandwidth = max_value; } }
 	
     status = uhd_usrp_get_rx_gain_range(rx_usrp, "", CHAN, rx_metric_range);          
     status = uhd_meta_range_start(rx_metric_range, &min_value);
@@ -393,6 +409,7 @@ int main(int argc, char* argv[]){
     fprintf(stderr, "[SDR RX] usrp Gain range: %2.3f to %2.3f step %2.3f...\n", min_value,max_value,step_value);
 	
 	//uhd_string_vector_handle antennas_out;
+	//uhd_string_vector_make(&antennas_out);
 	//status = uhd_usrp_get_rx_antennas(rx_usrp, CHAN, &antennas_out);
 	//status = uhd_usrp_get_clock_sources(rx_usrp, mboard, &antennas_out);
 	//uhd_string_vector_free(&antennas_out);
@@ -404,10 +421,9 @@ int main(int argc, char* argv[]){
 	
     /* Set transmitter subdev spec if specified */
     if (strlen(rx_subdev_str)) {
-      uhd_subdev_spec_handle subdev_spec_handle = {0};
-
       fprintf(stderr,"[SDR RX] Setting rx_subdev_spec to '%s'\n", rx_subdev_str);
-
+	  
+      uhd_subdev_spec_handle subdev_spec_handle = {0};
       uhd_subdev_spec_make(&subdev_spec_handle, rx_subdev_str);
       uhd_usrp_set_rx_subdev_spec(rx_usrp, subdev_spec_handle, mboard);
       uhd_subdev_spec_free(&subdev_spec_handle);
@@ -425,8 +441,8 @@ int main(int argc, char* argv[]){
     else if (clock_src == GPSDO) { uhd_usrp_set_clock_source(rx_usrp, "gpsdo", mboard); }
     else{ fprintf(stderr,"[SDR RX] clock source is set to default'\n"); }
 	
-	/* char* time_source_out = "";
-	status = uhd_usrp_get_time_source(rx_usrp,mboard, time_source_out, 50);
+	/* char time_source_out[128];
+	status = uhd_usrp_get_time_source(rx_usrp,mboard, time_source_out, 128);
 	fprintf(stderr, "[SDR RX] Actual TX Time Source: %s...\n", time_source_out); */
 	
 	// Set Master Clock
@@ -440,35 +456,35 @@ int main(int argc, char* argv[]){
 	fprintf(stderr, "[SDR RX] Actual master clock rate: %f...\n", current_master_clock);
     
     // Set Sample Rate
-    fprintf(stderr, "[SDR RX] Setting RX Rate: %f...\n", SampleRate);
-    status = uhd_usrp_set_rx_rate(rx_usrp, SampleRate, CHAN); //EXECUTE_OR_GOTO(free_rx_metadata,
-    status = uhd_usrp_get_rx_rate(rx_usrp, CHAN, &SampleRate); // EXECUTE_OR_GOTO(free_rx_metadata,
-    fprintf(stderr, "[SDR RX] Actual RX Rate: %f...\n", SampleRate);
+    fprintf(stderr, "[SDR RX] Setting RX Rate: %f...\n", m_SampleRate);
+    status = uhd_usrp_set_rx_rate(rx_usrp, m_SampleRate, CHAN); //EXECUTE_OR_GOTO(free_rx_metadata,
+    status = uhd_usrp_get_rx_rate(rx_usrp, CHAN, &m_SampleRate); // EXECUTE_OR_GOTO(free_rx_metadata,
+    fprintf(stderr, "[SDR RX] Actual RX Rate: %f...\n", m_SampleRate);
     
     // Set center Frequency
     uhd_tune_request_t tune_request = {
-        .target_freq     = CenterFrequency,
+        .target_freq     = m_CenterFrequency,
         .rf_freq_policy  = UHD_TUNE_REQUEST_POLICY_AUTO,
         .dsp_freq_policy = UHD_TUNE_REQUEST_POLICY_AUTO,
     };
     uhd_tune_result_t tune_result;
-    fprintf(stderr, "[SDR RX] Setting RX frequency: %f MHz...\n", CenterFrequency / 1e6);
+    fprintf(stderr, "[SDR RX] Setting RX frequency: %f MHz...\n", m_CenterFrequency / 1e6);
     status = uhd_usrp_set_rx_freq(rx_usrp, &tune_request, CHAN, &tune_result);// EXECUTE_OR_GOTO(free_rx_metadata,
-    status = uhd_usrp_get_rx_freq(rx_usrp, CHAN, &CenterFrequency);// EXECUTE_OR_GOTO(free_rx_metadata,
-    fprintf(stderr, "[SDR RX] Actual RX frequency: %f MHz...\n", CenterFrequency / 1e6);
+    status = uhd_usrp_get_rx_freq(rx_usrp, CHAN, &m_CenterFrequency);// EXECUTE_OR_GOTO(free_rx_metadata,
+    fprintf(stderr, "[SDR RX] Actual RX frequency: %f MHz...\n", m_CenterFrequency / 1e6);
 	
 	// Set gain : Set starting gain to half maximum in case of using AGC
-    double gain = max_gain*gain_ratio;
+    double gain = max_gain*m_gainRatio;
     fprintf(stderr, "[SDR RX] Setting RX Gain: %f dB...\n", gain);
     status = uhd_usrp_set_rx_gain(rx_usrp, gain, CHAN, ""); // EXECUTE_OR_GOTO(free_rx_metadata,
     status = uhd_usrp_get_rx_gain(rx_usrp, CHAN, "", &gain); // EXECUTE_OR_GOTO(free_rx_metadata,
     fprintf(stderr, "[SDR RX] Actual RX Gain: %f...\n", gain);
     
     //set the IF filter bandwidth
-	fprintf(stderr, "[SDR RX] Setting RX Bandwidth: %f...\n", Bandwidth);
-    status = uhd_usrp_set_rx_bandwidth(rx_usrp, Bandwidth, CHAN); //EXECUTE_OR_GOTO(free_rx_metadata,
-	status = uhd_usrp_get_rx_bandwidth(rx_usrp, CHAN, &Bandwidth); // EXECUTE_OR_GOTO(free_rx_metadata,
-	fprintf(stderr, "[SDR RX] Actual RX Bandwidth: %f...\n", Bandwidth);
+	fprintf(stderr, "[SDR RX] Setting RX Bandwidth: %f...\n", m_Bandwidth);
+    status = uhd_usrp_set_rx_bandwidth(rx_usrp, m_Bandwidth, CHAN); //EXECUTE_OR_GOTO(free_rx_metadata,
+	status = uhd_usrp_get_rx_bandwidth(rx_usrp, CHAN, &m_Bandwidth); // EXECUTE_OR_GOTO(free_rx_metadata,
+	fprintf(stderr, "[SDR RX] Actual RX Bandwidth: %f...\n", m_Bandwidth);
 
 	
     //set the antenna 
@@ -493,13 +509,12 @@ int main(int argc, char* argv[]){
     stream_args.args = "";
     stream_args.channel_list = &CHAN;
     stream_args.n_channels = 1;
-
-    //stream_args.cpu_format = "fc64";
-    //stream_args.cpu_format = "fc32";
-    stream_args.cpu_format = "sc16";
-    //stream_args.cpu_format = "sc8";
-    
-    
+	switch(dataTypeIn){
+		case FMT_U8:{ stream_args.cpu_format = "sc8"; }break;
+		case FMT_I16:{ stream_args.cpu_format = "sc16"; }break;
+		case FMT_FLOAT:{ stream_args.cpu_format = "fc32"; }break;
+		case FMT_DOUBLE:{ stream_args.cpu_format = "fc64"; }break;
+	}
     
     status = uhd_usrp_get_rx_stream(rx_usrp, &stream_args, rx_streamer); // EXECUTE_OR_GOTO(free_rx_streamer
     if(status != UHD_ERROR_NONE){
@@ -524,14 +539,16 @@ int main(int argc, char* argv[]){
     fprintf(stderr, "[SDR RX] Buffer size in samples: %zu\n", BUFFER_SIZE);
     
     
-    //double* buff  = malloc(BUFFER_SIZE* 2*sizeof(double));
-    //float* buff  = malloc(BUFFER_SIZE* 2*sizeof(float));
-    short* buff  = malloc(BUFFER_SIZE* 2*sizeof(short));
-	//uint8_t* buff  = malloc(BUFFER_SIZE* 2*sizeof(uint8_t));
+    uint8_t* uBufferIQ  = malloc(BUFFER_SIZE* 2*sizeof(uint8_t));
+	short* iBufferIQ  = malloc(BUFFER_SIZE* 2*sizeof(short));
+	float* fBufferIQ  = malloc(BUFFER_SIZE* 2*sizeof(float));
+	double* dBufferIQ  = malloc(BUFFER_SIZE* 2*sizeof(double));
     
     
-    
-    void** buffs_ptr = (void**)&buff;
+	const void** uBufferIQ_ptr = (const void**)&uBufferIQ;
+	const void** iBufferIQ_ptr = (const void**)&iBufferIQ;
+    const void** fBufferIQ_ptr = (const void**)&fBufferIQ;
+    const void** dBufferIQ_ptr = (const void**)&dBufferIQ;
     
     // Create RX metadata
     uhd_rx_metadata_handle rx_metadata;
@@ -547,15 +564,22 @@ int main(int argc, char* argv[]){
 	float timeout = settling + 0.1; //expected settling time + padding for first recv
 	bool overflow_message = true;
 
+    // Actual streaming
 	m_keep_running = (status == UHD_ERROR_NONE);
 
 	uint64_t num_acc_samps = 0;
+	size_t num_rx_samps = 0;
+	size_t nWrite = 0;
 	while(m_keep_running){
         
         if(total_num_samps > 0 && num_acc_samps >= total_num_samps){ break; }
-
-		size_t num_rx_samps = 0;
-		status = uhd_rx_streamer_recv(rx_streamer, buffs_ptr, BUFFER_SIZE, &rx_metadata, timeout, false, &num_rx_samps);
+	
+		switch(dataTypeIn){
+			case FMT_U8:{ status = uhd_rx_streamer_recv(rx_streamer, uBufferIQ_ptr, BUFFER_SIZE, &rx_metadata, timeout, false, &num_rx_samps); }break;
+			case FMT_I16:{ status = uhd_rx_streamer_recv(rx_streamer, iBufferIQ_ptr, BUFFER_SIZE, &rx_metadata, timeout, false, &num_rx_samps); }break;
+			case FMT_FLOAT:{ status = uhd_rx_streamer_recv(rx_streamer, fBufferIQ_ptr, BUFFER_SIZE, &rx_metadata, timeout, false, &num_rx_samps); }break;
+			case FMT_DOUBLE:{ status = uhd_rx_streamer_recv(rx_streamer, dBufferIQ_ptr, BUFFER_SIZE, &rx_metadata, timeout, false, &num_rx_samps); }break;
+		}
 		if(status != UHD_ERROR_NONE){ break; }
 		
 		if(num_rx_samps<=0){ fprintf(stderr,"%s[SDR RX] Error received symbols from LimeSDR, quit \n%s",RED,RESET); break; }
@@ -574,7 +598,7 @@ int main(int argc, char* argv[]){
 		if (error_code == UHD_RX_METADATA_ERROR_CODE_OVERFLOW) {
 			if (overflow_message){
 				overflow_message = false;				
-				fprintf(stderr,"%s[SDR RX] Got an overflow indication. Please consider the following:\n Your write medium must sustain a rate of %fMB/s.\nDropped samples will not be written to the file.\nPlease modify this example for your purposes.\nThis message will not appear again.\n%s",YELLOW,SampleRate/1e6,RESET);             
+				fprintf(stderr,"%s[SDR RX] Got an overflow indication. Please consider the following:\n Your write medium must sustain a rate of %fMB/s.\nDropped samples will not be written to the file.\nPlease modify this example for your purposes.\nThis message will not appear again.\n%s",YELLOW,m_SampleRate/1e6,RESET);             
 			}
 			continue;
 		}
@@ -585,7 +609,12 @@ int main(int argc, char* argv[]){
 		}
 		
 		// Handle data
-        size_t nWrite = fwrite(buff, sizeof(float) * 2, num_rx_samps, output_fid);
+		switch(dataTypeIn){
+			case FMT_U8:{ nWrite = fwrite(buff, sizeof(uint8_t) * 2, num_rx_samps, output_fid); }break;
+			case FMT_I16:{ nWrite = fwrite(buff, sizeof(short) * 2, num_rx_samps, output_fid); }break;
+			case FMT_FLOAT:{ nWrite = fwrite(buff, sizeof(float) * 2, num_rx_samps, output_fid); }break;
+			case FMT_DOUBLE:{ nWrite = fwrite(buff, sizeof(double) * 2, num_rx_samps, output_fid); }break;
+		}
         if(nWrite<num_rx_samps){ fprintf(stderr,"%s[SDR RX] Error writing data, quit \n%s",RED,RESET); break; }
 		
 		int64_t full_secs;
