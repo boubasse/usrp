@@ -414,10 +414,10 @@ int main(int argc, char* argv[]){
     }
     else{ fprintf(stderr,"[SDR TX] tx_subdev_spec setting is not specified \n"); }
 	
-	uhd_subdev_spec_handle subdev_spec_out;
+	/* uhd_subdev_spec_handle subdev_spec_out = {0};
 	status = uhd_usrp_get_tx_subdev_spec(tx_usrp,mboard, subdev_spec_out);
 	fprintf(stderr, "[SDR TX] Actual tx_subdev_spec: %s...\n", subdev_spec_out);
-	uhd_subdev_spec_free(&subdev_spec_out);
+	uhd_subdev_spec_free(&subdev_spec_out); */
 
     // Set external clock reference
 	fprintf(stderr, "[SDR TX] Setting TX Time Source: ...\n");
@@ -425,7 +425,7 @@ int main(int argc, char* argv[]){
     else if (clock_src == GPSDO) { status = uhd_usrp_set_clock_source(tx_usrp, "gpsdo", mboard); }
     else{ fprintf(stderr,"[SDR TX] clock source is set to default'\n"); }
 	
-	char* time_source_out;
+	char* time_source_out = "";
 	status = uhd_usrp_get_time_source(tx_usrp,mboard, time_source_out, 50);
 	fprintf(stderr, "[SDR TX] Actual TX Time Source: %s...\n", time_source_out);
 	
