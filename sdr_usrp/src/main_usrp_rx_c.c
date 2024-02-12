@@ -110,7 +110,7 @@ int main(int argc, char* argv[]){
 	
     FILE *output_fid = stdout;
     
-    char tx_subdev_str[64] = {0};
+    char rx_subdev_str[64] = {0};
 	enum {DEFAULT, EXTERNAL, GPSDO} clock_src = DEFAULT;
     
     size_t total_num_samps  = 0;
@@ -560,7 +560,7 @@ int main(int argc, char* argv[]){
 	
 	// ========================================================================================================
 	
-	/* float settling = 0.2;
+	float settling = 0.2;
 	float timeout = settling + 0.1; //expected settling time + padding for first recv
 	bool overflow_message = true;
 
@@ -623,7 +623,7 @@ int main(int argc, char* argv[]){
         fprintf(stderr,"%s[SDR RX] Received packet: %zu samples, %.f full secs, %f frac secs\n%s",GREEN,num_rx_samps,difftime(full_secs, (int64_t)0),frac_secs,RESET);
 		
 		num_acc_samps += num_rx_samps;
-	} */
+	}
 
     
     fclose(output_fid);
