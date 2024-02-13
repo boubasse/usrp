@@ -590,7 +590,7 @@ int main(int argc, char* argv[]){
 		if(status != UHD_ERROR_NONE){ break; }
 		
 		if(num_tx_samps<=0){ fprintf(stderr,"%s[SDR TX] Error transmit symbols from USRP, quit \n%s",RED,RESET); break; }
-        if(num_rx_samps!=BUFFER_SIZE){ fprintf(stderr,"%s[SDR RX] error: received samples: %ld/%ld \n%s",YELLOW,num_rx_samps,BUFFER_SIZE,RESET); }
+        if(num_tx_samps!=BUFFER_SIZE){ fprintf(stderr,"%s[SDR RX] error: received samples: %ld/%ld \n%s",YELLOW,num_rx_samps,BUFFER_SIZE,RESET); }
         
         fprintf(stderr, "%s[SDR TX] Sent %zu samples\n%s", GREEN,num_tx_samps,RESET);
 
