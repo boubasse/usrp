@@ -30,7 +30,7 @@ typedef struct {
 typedef struct {
 	int16_t re;
 	int16_t im;
-}s16cmplx;
+}i16cmplx;
 
 
 typedef struct{
@@ -42,7 +42,7 @@ typedef struct{
 
 enum FMT_DATA_TYPE {
 	FMT_U8 = 0,
-	FMT_S16,
+	FMT_I16,
 	FMT_FLOAT
 };
 
@@ -161,7 +161,7 @@ int main(int argc, char *argv[]) {
 				}break;
 			case 't':{ // Input Type
 					if (strcmp("float", optarg) == 0){ dataType = FMT_FLOAT; }
-					if (strcmp("s16", optarg) == 0)  { dataType = FMT_S16;   }
+					if (strcmp("s16", optarg) == 0)  { dataType = FMT_I16;   }
 					if (strcmp("u8", optarg) == 0)   { dataType = FMT_U8;    }
 				}break;
 			case 's':{ // SampleRate in Symbol/s [Kbaus/s]
@@ -437,9 +437,9 @@ int main(int argc, char *argv[]) {
                     iqin[i].imag((iqin_u8[i].im - 127.5)/127.0);             
                 }   
             }break;
-            case FMT_S16:{
-				i16cmplx iqin_s16[FFT_SIZE];
-				nRead = fread(iqin_s16, sizeof(i16cmplx),FFT_SIZE,input_fid);           
+            case FMT_I16:{
+				i16cmplx iqin_i16[FFT_SIZE];
+				nRead = fread(iqin_i16, sizeof(i16cmplx),FFT_SIZE,input_fid);           
                 if(nRead<=0){ break; } 
                 for(int i=0; i<nRead; i++){
                     iqin[i].real(iqin_i16[i].re/32767.0);
