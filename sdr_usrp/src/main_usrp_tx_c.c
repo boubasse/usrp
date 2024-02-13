@@ -577,6 +577,7 @@ int main(int argc, char* argv[]){
 			case FMT_DOUBLE:{ nRead = fread(dBufferIQ, sizeof(double),2*BUFFER_SIZE,input_fid); }break;
 		}
         if(nRead<(2*BUFFER_SIZE)){
+			continue;
           if(nRead>0){ fprintf(stderr, "%s[SDR TX] Incomplete buffer %ld/%ld\n%s",YELLOW,nRead,(2*BUFFER_SIZE),RESET); }
           else{ break; }			  			  
         }
