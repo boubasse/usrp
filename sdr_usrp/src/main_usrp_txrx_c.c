@@ -345,6 +345,25 @@ int main(int argc, char* argv[]){
     if(rx_usrp != NULL){ fprintf(stderr, "[SDR TXRX] Device is detected with success ....\n"); }
 	
 	
+	/* dev name */
+	if (devname) {
+      char dev_str[1024];
+      uhd_usrp_get_mboard_name(tx_usrp, mboard, dev_str, 1024);
+      if (strstr(dev_str, "B2") || strstr(dev_str, "B2")) {
+        devname = DEVNAME_B200;
+      } else if (strstr(dev_str, "X3") || strstr(dev_str, "X3")) {
+        devname = DEVNAME_X300;    
+      } else if (strstr(dev_str, "n3xx")) {
+        devname = DEVNAME_N300;
+      }
+    }
+    if (!devname) {
+      devname = "uhd_unknown"; 
+    }
+	
+	fprintf(stderr, "[SDR TX] usrp name = %s...\n", devname);
+	
+	
 	// =================================================================
 	
     
