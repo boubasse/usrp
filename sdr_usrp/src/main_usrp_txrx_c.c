@@ -366,6 +366,12 @@ int main(int argc, char* argv[]){
 	
 	// =================================================================
 	
+	// Set external clock reference
+	fprintf(stderr, "[SDR TX] Setting TX/RX Time Source: ...\n");
+    if (clock_src == EXTERNAL)   { status = uhd_usrp_set_clock_source(tx_usrp, "external", mboard);  status = uhd_usrp_set_clock_source(rx_usrp, "external", mboard); } 
+    else if (clock_src == GPSDO) { status = uhd_usrp_set_clock_source(tx_usrp, "gpsdo", mboard); status = uhd_usrp_set_clock_source(rx_usrp, "gpsdo", mboard); }
+    else{ fprintf(stderr,"[SDR TX] clock source is set to default'\n"); }
+	
     
 	// Set Master Clock
 	if (current_master_clock>0){
