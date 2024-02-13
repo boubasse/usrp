@@ -8,14 +8,17 @@ CXXFLAGS := -Wall -g -O2 -Wextra
 LDFLAGS := -lm -lrt -lpthread -luhd
 
 
-all:	usrptx.run usrprx.run
+all:	usrptx.run usrprx.run usrptxrx.run
 
 usrptx.run : src/main_usrp_tx_c.c
 		$(CC) $(CXXFLAGS) -o bin/usrptx.run src/main_usrp_tx_c.c $(LDFLAGS)
 
 usrprx.run : src/main_usrp_rx_c.c
 		$(CC) $(CXXFLAGS) -o bin/usrprx.run src/main_usrp_rx_c.c $(LDFLAGS)
+
+usrptxrx.run : src/main_usrp_txrx_c.c
+		$(CC) $(CXXFLAGS) -o bin/usrptxrx.run src/main_usrp_txrx_c.c $(LDFLAGS)
 			
 
 clean:
-	rm -f bin/usrptx.run bin/usrprx.run bin/*.o 
+	rm -f bin/usrptx.run bin/usrprx.run bin/usrptxrx.run bin/*.o 
