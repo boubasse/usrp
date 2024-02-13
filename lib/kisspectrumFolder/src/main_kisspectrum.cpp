@@ -161,7 +161,7 @@ int main(int argc, char *argv[]) {
 				}break;
 			case 't':{ // Input Type
 					if (strcmp("float", optarg) == 0){ dataType = FMT_FLOAT; }
-					if (strcmp("s16", optarg) == 0)  { dataType = FMT_I16;   }
+					if (strcmp("i16", optarg) == 0)  { dataType = FMT_I16;   }
 					if (strcmp("u8", optarg) == 0)   { dataType = FMT_U8;    }
 				}break;
 			case 's':{ // SampleRate in Symbol/s [Kbaus/s]
