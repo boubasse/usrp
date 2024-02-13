@@ -401,8 +401,8 @@ int main(int argc, char* argv[]){
 	double gain_RX = max_gain_RX*m_gainRatio;
 	
     fprintf(stderr, "[SDR TXRX] Setting TX Gain: %f dB  RX Gain: %f...\n", gain_TX,gain_RX);
-    status = uhd_usrp_set_tx_gain(tx_usrp, gain, CHAN, "");
-	status = uhd_usrp_set_rx_gain(rx_usrp, gain, CHAN, "");
+    status = uhd_usrp_set_tx_gain(tx_usrp, gain_TX, CHAN, "");
+	status = uhd_usrp_set_rx_gain(rx_usrp, gain_RX, CHAN, "");
     
 	status = uhd_usrp_get_tx_gain(tx_usrp, CHAN, "", &gain_TX);
     fprintf(stderr, "[SDR TXRX] Actual TX Gain: %f...\n", gain_TX);
@@ -523,6 +523,11 @@ int main(int argc, char* argv[]){
 	
 	
 	// Actual streaming
+	float timeout_tx = 0.1;
+	
+	float settling = 0.2; float timeout_rx = settling + 0.1; //expected settling time + padding for first recv
+	bool overflow_message_rx = true;
+	
 	m_keep_running = (status == UHD_ERROR_NONE);
 	
 	uint64_t num_acc_samps = 0;
@@ -549,10 +554,10 @@ int main(int argc, char* argv[]){
         }
 		
 		switch(dataTypeIn){
-			case FMT_U8:{ status = uhd_tx_streamer_send(tx_streamer, uBufferIQ_ptr_TX, BUFFER_SIZE, &tx_metadata, timeout, &num_tx_samps); }break;
-			case FMT_I16:{ status = uhd_tx_streamer_send(tx_streamer, iBufferIQ_ptr_TX, BUFFER_SIZE, &tx_metadata, timeout, &num_tx_samps); }break;
-			case FMT_FLOAT:{ status = uhd_tx_streamer_send(tx_streamer, fBufferIQ_ptr_TX, BUFFER_SIZE, &tx_metadata, timeout, &num_tx_samps); }break;
-			case FMT_DOUBLE:{ status = uhd_tx_streamer_send(tx_streamer, dBufferIQ_ptr_TX, BUFFER_SIZE, &tx_metadata, timeout, &num_tx_samps); }break;
+			case FMT_U8:{ status = uhd_tx_streamer_send(tx_streamer, uBufferIQ_ptr_TX, BUFFER_SIZE, &tx_metadata, timeout_tx, &num_tx_samps); }break;
+			case FMT_I16:{ status = uhd_tx_streamer_send(tx_streamer, iBufferIQ_ptr_TX, BUFFER_SIZE, &tx_metadata, timeout_tx, &num_tx_samps); }break;
+			case FMT_FLOAT:{ status = uhd_tx_streamer_send(tx_streamer, fBufferIQ_ptr_TX, BUFFER_SIZE, &tx_metadata, timeout_tx, &num_tx_samps); }break;
+			case FMT_DOUBLE:{ status = uhd_tx_streamer_send(tx_streamer, dBufferIQ_ptr_TX, BUFFER_SIZE, &tx_metadata, timeout_tx, &num_tx_samps); }break;
 		}
 		if(status != UHD_ERROR_NONE){ break; }
 		
@@ -575,6 +580,27 @@ int main(int argc, char* argv[]){
         if(num_rx_samps!=BUFFER_SIZE){ fprintf(stderr,"%s[SDR RX] error: received samples: %ld/%ld \n%s",YELLOW,num_rx_samps,BUFFER_SIZE,RESET); }
 		
 		timeout_rx = 0.1;   //small timeout for subsequent recv
+		
+		uhd_rx_metadata_error_code_t error_code;
+		uhd_rx_metadata_error_code(rx_metadata, &error_code);
+		
+		if (error_code == UHD_RX_METADATA_ERROR_CODE_TIMEOUT) {
+			fprintf(stderr,"%s[SDR RX] Timeout while streaming.\n%s",RED,RESET);
+			break;
+		}
+		
+		if (error_code == UHD_RX_METADATA_ERROR_CODE_OVERFLOW) {
+			if (overflow_message_rx){
+				overflow_message_rx = false;				
+				fprintf(stderr,"%s[SDR RX] Got an overflow indication. Please consider the following:\n Your write medium must sustain a rate of %fMB/s.\nDropped samples will not be written to the file.\nPlease modify this example for your purposes.\nThis message will not appear again.\n%s",YELLOW,m_SampleRate/1e6,RESET);             
+			}
+			continue;
+		}
+		
+		if (error_code != UHD_RX_METADATA_ERROR_CODE_NONE) {
+			fprintf(stderr,"%s[SDR RX] Error code 0x%x was returned during streaming. Aborting.\n%s",RED,error_code,RESET);
+			break;
+		}
 		
 		// Handle data
 		switch(dataTypeIn){
